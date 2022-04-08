@@ -1,7 +1,5 @@
 use blake2::{Blake2s256, Digest};
-use nix::fcntl::{self, fcntl, FcntlArg, OFlag, FdFlag};
-use nix::unistd;
-use std::io::Write;
+use nix::fcntl::{fcntl, FcntlArg, FdFlag};
 use std::os::unix::io::AsRawFd;
 use std::os::unix::prelude::OsStrExt;
 use std::path::PathBuf;
