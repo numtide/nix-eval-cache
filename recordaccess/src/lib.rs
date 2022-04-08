@@ -51,14 +51,14 @@ lazy_static! {
 
 pub fn record_path(path: *const c_char) {
     let c_str: &CStr = unsafe { CStr::from_ptr(path) };
-    let bytes = &c_str.to_bytes();
+    let bytes = &c_str.to_bytes_with_nul();
 
     // For debugging
     //let s = unsafe { std::str::from_utf8_unchecked(bytes) };
     //println!("{}", s);
 
     // only consider nix/json files and ignore immutable files in nix store
-    if !bytes.ends_with(b".nix") || !bytes.ends_with(b".json") || bytes.starts_with(b"/nix/store") {
+    if !(bytes.ends_with(b".nix\0") || bytes.ends_with(b".json\0")) || bytes.starts_with(b"/nix/store") {
         return
     }
     let mut paths = PATHS.lock().unwrap();
@@ -69,7 +69,6 @@ pub fn record_path(path: *const c_char) {
     if let Some(file) = &*NIX_EVAL_CACHE_FILE {
         let mut file = file.lock().unwrap();
         let _ = file.write_all(bytes);
-        let _ = file.write_all(b"\0");
         let _ = file.flush();
     };
 }
