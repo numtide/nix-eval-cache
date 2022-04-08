@@ -1,7 +1,5 @@
-use ctor::{ctor, dtor};
 use lazy_static::lazy_static;
 use libc::{c_char, c_int, mode_t};
-use nix::unistd;
 
 use std::collections::HashSet;
 use std::ffi::{CString, CStr};
@@ -9,16 +7,7 @@ use std::env;
 use std::fs::File;
 use std::io::Write;
 use std::os::unix::io::FromRawFd;
-use std::sync::atomic::{AtomicI32, AtomicUsize, Ordering};
 use std::sync::Mutex;
-
-static STATE: AtomicUsize = AtomicUsize::new(0);
-static REPORT_FD: AtomicI32 = AtomicI32::new(0);
-
-const UNINITIALIZED: usize = 0;
-const INITIALIZING: usize = 1;
-const INITIALIZED: usize = 2;
-const FINISHED: usize = 3;
 
 lazy_static! {
     static ref PATHS: Mutex<HashSet<CString>> = Mutex::new(HashSet::new());
@@ -47,32 +36,15 @@ lazy_static! {
             b"openat64\0".as_ptr() as *const i8,
         ))
     };
-}
-
-#[ctor]
-fn init() {
-    if STATE
-        .compare_exchange(
-            UNINITIALIZED,
-            INITIALIZING,
-            Ordering::Acquire,
-            Ordering::Relaxed,
-        )
-        .is_err()
-    {
-        return;
-    }
-
-    // Should we unset NIX_EVAL_CACHE_FD in childs?
-    match env::var("NIX_EVAL_CACHE_FD") {
-        Ok(strval) => {
+    static ref NIX_EVAL_CACHE_FILE: Option<Mutex<File>> = {
+        if let Ok(strval) = env::var("NIX_EVAL_CACHE_FD") {
             if let Ok(val) = strval.parse::<i32>() {
-                REPORT_FD.store(val, Ordering::Release)
+                Some(unsafe { Mutex::new(File::from_raw_fd(val)) })
+            } else {
+                None
             }
-            STATE.store(INITIALIZED, Ordering::Release);
-        }
-        Err(_) => {
-            return;
+        } else {
+            None
         }
     };
 }
@@ -80,11 +52,23 @@ fn init() {
 pub fn record_path(path: *const c_char) {
     let c_str: &CStr = unsafe { CStr::from_ptr(path) };
     let bytes = &c_str.to_bytes();
+    let s = unsafe { std::str::from_utf8_unchecked(bytes) };
+    println!("{}", s);
     // only consider nix files and ignore immutable files in nix store
     if !bytes.ends_with(b".nix") || bytes.starts_with(b"/nix/store") {
         return
     }
-    PATHS.lock().unwrap().insert(c_str.to_owned());
+    let mut paths = PATHS.lock().unwrap();
+    if paths.contains(c_str) {
+        return;
+    }
+    paths.insert(c_str.to_owned());
+    if let Some(file) = &*NIX_EVAL_CACHE_FILE {
+        let mut file = file.lock().unwrap();
+        let _ = file.write_all(bytes);
+        let _ = file.write_all(b"\0");
+        let _ = file.flush();
+    };
 }
 
 #[no_mangle]
@@ -125,26 +109,4 @@ pub extern "C" fn sys_openat64(
         record_path(pathname);
     }
     REAL_OPENAT64(dirfd, pathname, flags, mode)
-}
-
-#[dtor]
-fn deinit() {
-    if STATE
-        .compare_exchange(INITIALIZED, FINISHED, Ordering::Acquire, Ordering::Relaxed)
-        .is_err()
-    {
-        return;
-    }
-    let fd = REPORT_FD.load(Ordering::Acquire);
-    let mut f = unsafe { File::from_raw_fd(fd) };
-    let paths = PATHS.lock().unwrap();
-    for p in paths.iter() {
-        //use std::slice;
-        //use std::str;
-        //let s = unsafe { str::from_utf8_unchecked(slice::from_raw_parts(p.as_ptr() as *const u8, libc::strlen(p.as_ptr())+1)) };
-        //println!("{}", s);
-        let _ = f.write_all(p.as_bytes());
-        let _ = f.write_all(b"\0");
-    }
-    let _ = f.flush();
 }
