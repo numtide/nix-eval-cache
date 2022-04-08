@@ -52,8 +52,11 @@ lazy_static! {
 pub fn record_path(path: *const c_char) {
     let c_str: &CStr = unsafe { CStr::from_ptr(path) };
     let bytes = &c_str.to_bytes();
-    let s = unsafe { std::str::from_utf8_unchecked(bytes) };
-    println!("{}", s);
+
+    // For debugging
+    //let s = unsafe { std::str::from_utf8_unchecked(bytes) };
+    //println!("{}", s);
+
     // only consider nix files and ignore immutable files in nix store
     if !bytes.ends_with(b".nix") || bytes.starts_with(b"/nix/store") {
         return
