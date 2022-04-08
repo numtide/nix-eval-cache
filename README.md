@@ -6,8 +6,8 @@ skips build/evaluation based on modification date of nix files.
 
 Usage:
 
-```
-cat > foo.nix <<EOF
+``console
+$ cat > foo.nix <<EOF
 with import <nixpkgs> {};
 pkgs.hello
 EOF
@@ -17,5 +17,5 @@ $ time ./target/debug/nix-eval-cache result nix-build foo.nix
 ./target/debug/nix-eval-cache result nix-build foo.nix  0,42s user 0,12s system 82% cpu 0,657 total
 $ time ./target/debug/nix-eval-cache result nix-build foo.nix
 skip build
-./target/debug/nix-eval-cache result nix-build foo.nix  0,00s user 0,01s system 91% cpu 0,009 total
+$ ./target/debug/nix-eval-cache result nix-build foo.nix  0,00s user 0,01s system 91% cpu 0,009 total
 ```
