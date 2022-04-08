@@ -1,5 +1,7 @@
 # nix-eval-cache
 
+Status: alpha
+
 skips build/evaluation based on modification date of nix files.
 
 Usage:
