@@ -1,0 +1,13 @@
+[package]
+name = "nix-eval-cache"
+version = "0.1.0"
+edition = "2021"
+
+[workspace]
+exclude = [
+  "recordaccess",
+]
+
+[[bin]]
+name = "nix-eval-cache"
+path = "src/main.rs"

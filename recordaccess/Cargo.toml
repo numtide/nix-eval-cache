@@ -1,0 +1,14 @@
+[package]
+name = "recordaccess"
+version = "0.0.1"
+authors = [ "Jörg Thalheim <joerg@thalheim.io>" ]
+edition = "2021"
+
+[lib]
+crate-type = ["staticlib"]
+
+[dependencies]
+nix = "0.23.1"
+ctor = "0.1.22"
+libc = "0.2.122"
+lazy_static = "1.4.0"
