@@ -41,6 +41,11 @@ fn get_cache_key(args: &[String]) -> Result<String, std::io::Error> {
 }
 
 fn check_cache(cache_key: &Path) -> Result<bool, std::io::Error> {
+    let cache_metadata = match fs::metadata(cache_key) {
+        Ok(c) => c,
+        Err(_) => return Ok(false)
+    };
+    let cache_time = cache_metadata.modified().unwrap();
     if let Ok(file) = File::open(cache_key) {
         let buf_read = BufReader::new(file);
         let mut found_seperator = false;
@@ -49,10 +54,23 @@ fn check_cache(cache_key: &Path) -> Result<bool, std::io::Error> {
             if line.is_empty() {
                 found_seperator = true;
                 continue;
-            }
-            if found_seperator {
+            } else if found_seperator {
                 let p = PathBuf::from(OsStr::from_bytes(&line));
                 return Ok(p.exists());
+            } else {
+                let path = PathBuf::from(OsStr::from_bytes(&line));
+                match path.metadata() {
+                    Ok(s) => {
+                        let timestamp = s.modified().unwrap();
+                        // file is newer than cache
+                        if timestamp > cache_time {
+                            return Ok(false)
+                        }
+                    },
+                    _ => { // file was removed, recalculate
+                        return Ok(false)
+                    }
+                };
             }
         }
     }

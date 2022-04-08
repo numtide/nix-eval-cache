@@ -2,16 +2,15 @@ use lazy_static::lazy_static;
 use libc::{c_char, c_int, mode_t};
 
 use std::collections::HashSet;
-use std::ffi::{CString, CStr};
-use std::env;
+use std::ffi::{CStr, CString, OsString};
 use std::fs::File;
 use std::io::Write;
 use std::os::unix::io::FromRawFd;
 use std::sync::Mutex;
+use std::{env, fs};
 
 lazy_static! {
     static ref PATHS: Mutex<HashSet<CString>> = Mutex::new(HashSet::new());
-
     static ref REAL_OPEN: extern "C" fn(path: *const c_char, oflag: c_int, mode: mode_t) -> c_int = unsafe {
         std::mem::transmute(libc::dlsym(
             libc::RTLD_NEXT,
@@ -53,14 +52,27 @@ pub fn record_path(path: *const c_char) {
     let c_str: &CStr = unsafe { CStr::from_ptr(path) };
     let bytes = &c_str.to_bytes_with_nul();
 
+    let s = unsafe { std::str::from_utf8_unchecked(c_str.to_bytes()) };
     // For debugging
-    //let s = unsafe { std::str::from_utf8_unchecked(bytes) };
     //println!("{}", s);
 
     // only consider nix/json files and ignore immutable files in nix store
-    if bytes.len() < 2 && !(bytes.ends_with(b".nix\0") || bytes.ends_with(b".json\0")) || bytes.starts_with(b"/nix/store") {
-        return
+    if (!bytes.ends_with(b".nix\0") && !bytes.ends_with(b".json\0"))
+        || bytes.starts_with(b"/nix/store")
+    {
+        return;
     }
+    match fs::metadata(s) {
+        Ok(m) => {
+            if !m.file_type().is_file() {
+                return;
+            }
+        }
+        Err(e) => {
+            return;
+        }
+    };
+
     let mut paths = PATHS.lock().unwrap();
     if paths.contains(c_str) {
         return;
@@ -75,8 +87,11 @@ pub fn record_path(path: *const c_char) {
 
 #[no_mangle]
 pub extern "C" fn sys_open(path: *const c_char, oflag: c_int, mode: mode_t) -> c_int {
-    record_path(path);
-    REAL_OPEN(path, oflag, mode)
+    let res = REAL_OPEN(path, oflag, mode);
+    if res > 0 {
+        record_path(path);
+    }
+    res
 }
 
 // FIXME, we might not need this
@@ -87,16 +102,20 @@ pub extern "C" fn sys_openat(
     flags: c_int,
     mode: mode_t,
 ) -> c_int {
-    if dirfd == libc::AT_FDCWD {
+    let res = REAL_OPENAT(dirfd, pathname, flags, mode);
+    if res >= 0 && dirfd == libc::AT_FDCWD {
         record_path(pathname);
     }
-    REAL_OPENAT(dirfd, pathname, flags, mode)
+    res
 }
 
 #[no_mangle]
 pub extern "C" fn sys_open64(path: *const c_char, oflag: c_int, mode: mode_t) -> c_int {
-    record_path(path);
-    REAL_OPEN64(path, oflag, mode)
+    let res = REAL_OPEN64(path, oflag, mode);
+    if res > 0 {
+        record_path(path);
+    }
+    res
 }
 
 // FIXME, we might not need this
@@ -107,8 +126,9 @@ pub extern "C" fn sys_openat64(
     flags: c_int,
     mode: mode_t,
 ) -> c_int {
-    if dirfd == libc::AT_FDCWD {
+    let res = REAL_OPENAT64(dirfd, pathname, flags, mode);
+    if res >= 0 && dirfd == libc::AT_FDCWD {
         record_path(pathname);
     }
-    REAL_OPENAT64(dirfd, pathname, flags, mode)
+    res
 }
