@@ -79,6 +79,11 @@ fn init() {
 
 pub fn record_path(path: *const c_char) {
     let c_str: &CStr = unsafe { CStr::from_ptr(path) };
+    let bytes = &c_str.to_bytes();
+    // only consider nix files and ignore immutable files in nix store
+    if !bytes.ends_with(b".nix") || bytes.starts_with(b"/nix/store") {
+        return
+    }
     PATHS.lock().unwrap().insert(c_str.to_owned());
 }
 
