@@ -34,7 +34,6 @@ fn get_cache_key(args: &[String]) -> Result<String, std::io::Error> {
     Ok(hex::encode(res))
 }
 
-
 // TODO: better error handling and nicer error messages...
 fn main() -> Result<(), std::io::Error> {
     let args: Vec<_> = env::args().collect();
@@ -53,10 +52,7 @@ fn main() -> Result<(), std::io::Error> {
 
     let write_file = NamedTempFile::new_in(&dir)?;
 
-    fcntl(
-        write_file.as_raw_fd(),
-        FcntlArg::F_SETFD(FdFlag::empty()),
-    )?;
+    fcntl(write_file.as_raw_fd(), FcntlArg::F_SETFD(FdFlag::empty()))?;
 
     let status = Command::new(&args[1])
         .args(&args[2..])

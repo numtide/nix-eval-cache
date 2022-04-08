@@ -1,8 +1,8 @@
 use std::env;
-use std::process::Command;
-use std::path::Path;
 use std::fs::{read_dir, DirEntry};
 use std::io;
+use std::path::Path;
+use std::process::Command;
 
 #[macro_export]
 macro_rules! ok(($expression:expr) => ($expression.unwrap()));
@@ -55,10 +55,7 @@ fn main() {
 
     let out_dir = env::var_os("OUT_DIR").expect("OUT_DIR is not set");
     run("cargo", |command| {
-        command
-            .arg("build")
-            .arg("--release")
-            .current_dir(&libdir)
+        command.arg("build").arg("--release").current_dir(&libdir)
     });
     let dynamiclib = Path::new(&out_dir).join("librecordaccess.so");
 
@@ -75,7 +72,10 @@ fn main() {
             .arg(curdir.join("recordaccess/src/redirectopen.c"))
             .arg("-lrecordaccess")
             .arg("-ldl")
-            .arg(&format!("-L{}", curdir.join("recordaccess/target/release").display()))
+            .arg(&format!(
+                "-L{}",
+                curdir.join("recordaccess/target/release").display()
+            ))
     });
 
     println!("cargo:rerun-if-changed=recordaccess/build.rs");
