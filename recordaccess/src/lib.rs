@@ -1,6 +1,7 @@
 use ctor::{ctor, dtor};
 use lazy_static::lazy_static;
 use libc::{c_char, c_int, mode_t};
+use nix::unistd;
 
 use std::collections::HashSet;
 use std::ffi::{CString, CStr};
@@ -133,7 +134,12 @@ fn deinit() {
     let mut f = unsafe { File::from_raw_fd(fd) };
     let paths = PATHS.lock().unwrap();
     for p in paths.iter() {
+        //use std::slice;
+        //use std::str;
+        //let s = unsafe { str::from_utf8_unchecked(slice::from_raw_parts(p.as_ptr() as *const u8, libc::strlen(p.as_ptr())+1)) };
+        //println!("{}", s);
         let _ = f.write_all(p.as_bytes());
         let _ = f.write_all(b"\0");
     }
+    let _ = f.flush();
 }
