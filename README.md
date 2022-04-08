@@ -6,7 +6,7 @@ skips build/evaluation based on modification date of nix files.
 
 Usage:
 
-``console
+```console
 $ cat > foo.nix <<EOF
 with import <nixpkgs> {};
 pkgs.hello
