@@ -68,6 +68,7 @@ fn main() {
     run(&cc, |command| {
         command
             .arg("-shared")
+            .arg("-O2")
             .arg("-o")
             .arg(&dynamiclib)
             .arg(curdir.join("recordaccess/src/redirectopen.c"))
