@@ -58,7 +58,7 @@ pub fn record_path(path: *const c_char) {
     //println!("{}", s);
 
     // only consider nix/json files and ignore immutable files in nix store
-    if !(bytes.ends_with(b".nix\0") || bytes.ends_with(b".json\0")) || bytes.starts_with(b"/nix/store") {
+    if bytes.len() < 2 && !(bytes.ends_with(b".nix\0") || bytes.ends_with(b".json\0")) || bytes.starts_with(b"/nix/store") {
         return
     }
     let mut paths = PATHS.lock().unwrap();
