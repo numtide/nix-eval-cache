@@ -11,3 +11,7 @@ exclude = [
 [[bin]]
 name = "nix-eval-cache"
 path = "src/main.rs"
+
+[dependencies]
+tempfile = "3.3.0"
+nix = "0.23.1"
