@@ -1,1 +1,5 @@
 /target
+/recordaccess/target
+
+# nix-build symlinks
+/result
