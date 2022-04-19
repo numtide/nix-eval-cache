@@ -3,3 +3,6 @@
 
 # nix-build symlinks
 /result
+
+# direnv
+.direnv
